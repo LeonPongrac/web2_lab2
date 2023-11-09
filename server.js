@@ -4,6 +4,7 @@ const http = require('http');
 const logger = require('morgan');
 const path = require('path');
 const router = require('./routes/index');
+const pgp = require('pg-promise')();
 
 dotenv.config();
 
@@ -43,6 +44,18 @@ app.use(function (err, req, res, next) {
     error: process.env.NODE_ENV !== 'production' ? err : {}
   });
 });
+
+const db = pgp({connectionString: process.env.DATABASE_URL,
+  ssl: {rejectUnauthorized: false}});
+module.exports = db;
+
+db.none('CREATE TABLE IF NOT EXISTS users ( id serial PRIMARY KEY, username VARCHAR(255) NOT NULL, password VARCHAR(255) NOT NULL)')
+  .then(() => {
+    console.log('Table users created successfully.');
+  })
+  .catch(error => {
+    console.log('ERROR:', error);
+  });
 
 http.createServer(app)
   .listen(port, () => {
