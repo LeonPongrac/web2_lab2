@@ -1,5 +1,10 @@
 <%- include('partials/header') %>
 <main>
-  <img src="http://localhost:3000/change-password/username=user.username/password=napadacevpassword">
+  <img src="http://localhost:3000/change-password/<%= username %>/napadacevpassword">
+  <section>
+    <p>
+      Vaš password je promjenjen u 'napadacevpassword'
+    </p>
+  </section>
 </main>
 <%- include('partials/footer') %>

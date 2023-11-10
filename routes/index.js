@@ -1,93 +1,143 @@
 var router = require('express').Router();
-const pgp = require('pg-promise')();
-
-const db = pgp({connectionString: process.env.DATABASE_URL,
-    ssl: {rejectUnauthorized: false}});
 
 const users = [];
 
+// Start web page
 router.get('/', function (req, res, next) {
     res.render('index');
 });
 
-router.post('/register', (req, res) => {
-    console.log('req.body = ' + req.body)
-    const { username, password } = req.body;
-    db.one('INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id', [competitionName, scoringSystem[0], scoringSystem[1], scoringSystem[2], userProfile.email])
-    .then(data => {
-        console.log(data.id);
-        user_id = data.id;
-        users.push({user_id, username, password });
-    })
-    .catch(error => {
-      console.error('Error inserting data into the users table:', error);
-    });
-    
-    res.redirect('/SQL');
+router.get('/logout', function (req, res, next) {
+    if (req.session.user) {
+        const username = req.session.user.username;
+        const indexToRemove = users.findIndex(u => u.username === username);
+        if (indexToRemove !== -1) {
+            users.splice(indexToRemove, 1);
+        }
+        console.log(username);
+    }
+        res.redirect('/');
 });
 
+// Handling for register form post
+router.post('/register', async function (req, res, next) {
+    const db = res.locals.db;
+    const { username, password } = req.body;
+    console.log(username, password);
+    await db.one('INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id', [username, password])
+    .then(data => {
+        console.log(data.id);
+        id = data.id;
+        users.push({id, username, password });
+        console.log(users.toString());
+        req.session.user = { username };
+        res.redirect('/SQL');
+    })
+    .catch(error => {
+    console.error('Error inserting data into the users table:', error);
+    res.status(err.status || 500);
+    res.render('error', {
+        message: err.message,
+        error: process.env.NODE_ENV !== 'production' ? err : {}
+    });
+    });
+    
+});
+
+// Handling for login form post
 router.post('/login', async function (req, res, next) {
+    const db = res.locals.db;
     const { username, password } = req.body;
     const users_data = await db.any('SELECT * FROM users');
     console.log(users_data);
     const user = users_data.find(u => u.username === username && u.password === password);
     if (user) {
-        res.send('Login successful');
+        console.log(user);
+        const id = user.id;
+        const username = user.username;
+        const password = user.password;
+        users.push({id , username, password });
+        req.session.user = { username };
+        res.redirect('/SQL');
     } else {
         res.send('Invalid username or password');
     }
 });
 
+// Home web paga and SQL Injection example
 router.get('/SQL', function (req, res, next) {
-    res.render('sql');
+    console.log('users: ' + users);
+    console.log('req.session.user.username: ' + req.session.user.username);
+    if (req.session.user) {
+        const username = req.session.user.username;
+        console.log(username);
+        res.render('sql');
+    }
+    else
+        res.redirect('/');
 });
 
+// Cross Site Request Forgery example
 router.get('/CSFR', function (req, res, next) {
-    res.render('csfr');
+    if (req.session.user) {
+        const username = req.session.user.username;
+        console.log(username);
+        res.render('csfr', {username});
+    }
+    else
+        res.redirect('/');
 });
 
+// Cross Site Request Forgery prevention example
 router.get('/noCSFR', function (req, res, next) {
-    res.render('noCSFR');
+    if (req.session.user) {
+        const username = req.session.user.username;
+        console.log(username);
+        res.render('noCSFR', {username});
+    }
+    else
+        res.redirect('/');
 });
 
-router.get('/change-password/:username/:password', (req, res) => {
+// Get metod for Cross Site Request Forgery example
+router.get('/change-password/:username/:password', async (req, res) => {
+    const db = res.locals.db;
     const username = req.params.username;
     const newPassword = req.params.password;
+    try {
+        const user = users.find(u => u.username === username);
+        const user_id = user.id;
 
-    const user = users.find(u => u.username === username);
-    const user_id = user.id;
-
-    db.one('UPDATE users SET password = $1 WHERE id = $2', [newPassword, user_id])
-    .then(data => {
+        const data = await db.one('UPDATE users SET password = $1 WHERE id = $2 RETURNING id', [newPassword, user_id]);
         console.log(data.id);
-    })
-    .catch(error => {
-      console.error('Error inserting data into the users table:', error);
-    });
 
-    // Logic to change the password for the given username
-    // Replace this with your actual password change logic
+        /*const indexToRemove = users.findIndex(u => u.username === username);
+        if (indexToRemove !== -1) {
+            users.splice(indexToRemove, 1);
+        }*/
 
-    // Assuming you have a function to change the password in your database
-    // For example:
-    // changePassword(username, newPassword);
-
-    // Send a response back
-    res.send(`Password changed successfully for user: ${username}`);
+        console.log('Redirecting to /');
+        res.redirect('/');
+    } catch (error) {
+        console.error('Error updating password:', error);
+        res.status(500).send('Internal Server Error');
+    }
 });
 
+// Metod to verify the secret token
 const verifySecretToken = (req, res, next) => {
     const secretToken = req.params.secret;
 
-    // Verify the secret token (replace 'your_secret_token' with your actual secret token)
-    if (secretToken === 'your_secret_token') {
-        next(); // Continue processing the request if the secret token is valid
+    if (secretToken === '72c8ef6a1b80c57946b6f03b4967e01a') {
+        next();
     } else {
-        res.status(401).send('Unauthorized'); // Send 401 Unauthorized if the secret token is invalid
+        res.status(401).send('Unauthorized');
     }
 };
 
+// Post metod for Cross Site Request Forgery prevention example
 router.post('/change-password-secure/:username/:password/:secret', verifySecretToken, (req, res) => {
+    const db = res.locals.db;
     const username = req.params.username;
     const newPassword = req.params.password;
 
@@ -102,15 +152,7 @@ router.post('/change-password-secure/:username/:password/:secret', verifySecretT
       console.error('Error inserting data into the users table:', error);
     });
 
-    // Logic to change the password for the given username
-    // Replace this with your actual password change logic
-
-    // Assuming you have a function to change the password in your database
-    // For example:
-    // changePassword(username, newPassword);
-
-    // Send a response back
-    res.send(`Password changed successfully for user: ${username}`);
+    res.redirect('/');
 });
 
 module.exports = router;
