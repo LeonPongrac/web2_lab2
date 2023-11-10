@@ -7,6 +7,7 @@ router.get('/', function (req, res, next) {
     res.render('index');
 });
 
+// Handling for logout
 router.get('/logout', function (req, res, next) {
     if (req.session.user) {
         const username = req.session.user.username;
@@ -70,12 +71,47 @@ router.get('/SQL', function (req, res, next) {
     console.log('req.session.user.username: ' + req.session.user.username);
     if (req.session.user) {
         const username = req.session.user.username;
+        const result = null;
         console.log(username);
-        res.render('sql');
+        res.render('sql', { result });
     }
     else
         res.redirect('/');
 });
+
+router.post('/sqlinput', async (req, res) => {
+    const { username, password, checkbox } = req.body;
+    const db = res.locals.db;
+
+    console.log(checkbox);
+
+    if (checkbox === 'on') {
+        try {
+            const result = await db.one('SELECT * FROM users WHERE username = $1 AND password = $2', [username, password]);
+        
+            res.render('sql', { result });
+          } catch (error) {
+            console.error('Error executing database query:', error);
+        
+            res.render('sql', { error: 'Error executing database query' });
+          }
+    }
+    else{
+        try {
+            const queryString = `SELECT * FROM users WHERE username = '${username}' AND password = '${password}'`;
+            const result = await db.any(queryString);
+            console.log(result);
+        
+            res.render('sql', { result });
+          } catch (error) {
+            console.error('Error executing database query:', error);
+        
+            res.render('sql', { error: 'Error executing database query' });
+          }
+    }
+  
+    
+  });
 
 // Cross Site Request Forgery example
 router.get('/CSFR', function (req, res, next) {

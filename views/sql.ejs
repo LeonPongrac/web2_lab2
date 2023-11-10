@@ -13,16 +13,39 @@
     </p>
   </section>
   <section>
-    
-    <form action="/" method="post">
-      <label for="inputField">Vaš SQL upit:</label>
-      <input type="text" id="inputField" name="inputField">
+    <p>
+      Ovdje je primjer SQL umetanja. U poje upišite svoj username i password da dobite svoj id.
+      Kada upišete ' OR ''=' u oba polja detektira se SQL ubacivanje. Sa checkboxom zaštia se ubacivanje uključuje i isključuje.
+    </p>
+    <form action="/sqlinput" method="post">
+      <label for="username">Username:</label>
+      <input type="text" id="username" name="username" required>
+      <br>
+      <label for="password">Password:</label>
+      <input type="password" id="password" name="password" required>
       <br>
       <label for="checkbox">Zaštita:</label>
       <input type="checkbox" id="checkbox" name="checkbox">
       <br>
       <button type="submit">Submit</button>
     </form>
+  </section>
+  <section>
+    <% if (result !== null) { %>
+      <ul>
+        <% result.forEach(function(user) { %>
+          <li>
+            Username : <strong><%= user.username %></strong>
+          </li>
+          <li>
+            Password : <strong><%= user.password %></strong>
+          </li>
+          <li>
+            Id : <strong><%= user.id %></strong>
+          </li>
+        <% }); %>
+      </ul>
+    <% } %>
   </section>
 </main>
 <%- include('partials/footer') %>
