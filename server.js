@@ -21,20 +21,24 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
-  secret: 'your-secret-key',
+  secret: '82c8ef6a1b80c57446u6f03b4967h01a',
   resave: false,
   saveUninitialized: true
 }))
 
+const externalUrl = process.env.RENDER_EXTERNAL_URL;
+const port = externalUrl && process.env.PORT ? parseInt(process.env.PORT) : 4080;
+
 const config = {
   authRequired: false,
-  auth0Logout: true
+  auth0Logout: true,
+  baseURL: externalUrl || `https://localhost:${port}`
 };
 
-const port = process.env.PORT || 3000;
-if (!config.baseURL && !process.env.BASE_URL && process.env.PORT && process.env.NODE_ENV !== 'production') {
+//const port = process.env.PORT || 3000;
+/*if (!config.baseURL && !process.env.BASE_URL && process.env.PORT && process.env.NODE_ENV !== 'production') {
   config.baseURL = `http://localhost:${port}`;
-}
+}*/
 
 const db = pgp({connectionString: process.env.DATABASE_URL,
   ssl: {rejectUnauthorized: false}});
@@ -79,7 +83,24 @@ db.none('CREATE TABLE IF NOT EXISTS users ( id serial PRIMARY KEY, username TEXT
     console.log('ERROR:', error);
   });*/
 
-http.createServer(app)
+/*http.createServer(app)
   .listen(port, () => {
     console.log(`Listening on ${config.baseURL}`);
-});
+});*/
+
+if (externalUrl) {
+  const hostname = '0.0.0.0'; //ne 127.0.0.1
+  app.listen(port, hostname, () => {
+    console.log(`Server locally running at http://${hostname}:${port}/ and from
+    outside on ${externalUrl}`);
+  });
+}
+else {
+https.createServer({
+  key: fs.readFileSync('server.key'),
+  cert: fs.readFileSync('server.cert')
+  }, app)
+  .listen(port, function () {
+    console.log(`Server running at https://localhost:${port}/`);
+  });
+}
