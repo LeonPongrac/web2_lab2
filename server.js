@@ -2,6 +2,7 @@ const dotenv = require('dotenv');
 const express = require('express');
 const session = require('express-session');
 const http = require('http');
+const https = require('https');
 const logger = require('morgan');
 const path = require('path');
 const router = require('./routes/index');
@@ -16,6 +17,7 @@ app.set('view engine', 'ejs');
 
 app.use(logger('dev'));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'views')));
 app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
@@ -96,11 +98,11 @@ if (externalUrl) {
   });
 }
 else {
-https.createServer({
+http.createServer(/*{
   key: fs.readFileSync('server.key'),
   cert: fs.readFileSync('server.cert')
-  }, app)
+  },*/ app)
   .listen(port, function () {
-    console.log(`Server running at https://localhost:${port}/`);
+    console.log(`Server running at http://localhost:${port}/`);
   });
 }

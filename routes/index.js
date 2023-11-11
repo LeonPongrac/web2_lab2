@@ -81,13 +81,15 @@ router.get('/SQL', function (req, res, next) {
 
 router.post('/sqlinput', async (req, res) => {
     const { username, password, checkbox } = req.body;
-    const db = res.locals.db;
-
-    console.log(checkbox);
+    const db = res.locals.db; 
 
     if (checkbox === 'on') {
         try {
-            const result = await db.one('SELECT * FROM users WHERE username = $1 AND password = $2', [username, password]);
+            const resultdata = await db.one('SELECT * FROM users WHERE username = $1 AND password = $2', [username, password]);
+
+            const result = [];
+            result.push(resultdata);
+            console.log(result);
         
             res.render('sql', { result });
           } catch (error) {
